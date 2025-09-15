@@ -8,6 +8,7 @@ import Ajv2020 from "ajv/dist/2020"
 import * as yaml from 'js-yaml';
 import * as tc from "@actions/tool-cache";
 import {schema} from './schema'
+import {Octokit} from "@octokit/core";
 
 interface ToolInfo {
     owner: string;
@@ -37,7 +38,7 @@ interface Config {
 export async function run() {
     try {
         // set up auth/environment
-        const token = process.env['GITHUB_TOKEN'] || core.getInput("token")
+        const token = core.getInput("token") || process.env['GITHUB_TOKEN'] || '';
         const config = core.getInput("config");
 
         const ajv = new Ajv2020()
@@ -103,7 +104,19 @@ export async function run() {
             }
         }
 
-        const octokit = getOctokit(token)
+        const octokit = getOctokit(token, {
+            baseUrl: 'https://api.github.com',
+        })
+        octokit.hook.before("request", async ( options) => {
+            console.log(`${options.method} ${options.baseUrl} ${options.url}`);
+            console.log(JSON.stringify(options));
+        });
+
+        octokit.hook.error("request", async (error, options) => {
+            console.log(JSON.stringify(error));
+        });
+
+
         for (let [repo, config] of configs) {
             if (config.skip) {
                 core.info(`Skipping ${repo}`)
@@ -147,6 +160,8 @@ function defaultArchList() {
     }
 }
 async function downloadRelease(octokit, token, config: Config, cache_enabled: boolean): Promise<boolean> {
+
+    console.log(JSON.stringify(octokit))
 
     let dest = toolPath(config);
 

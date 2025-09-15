@@ -1,11 +1,12 @@
 import {Octokit} from "@octokit/core";
 import * as core from "@actions/core";
+import { OctokitOptions } from '@octokit/core/dist-types/types';
 import {getOctokitOptions, GitHub} from "@actions/github/lib/utils";
 import {throttling} from "@octokit/plugin-throttling";
 
 const ThrottlingOctokit = GitHub.plugin(throttling);
 
-export function getOctokit(token: string): Octokit {
+export function getOctokit(token: string, options: OctokitOptions): Octokit {
     return new ThrottlingOctokit({
         throttle: {
             onRateLimit: (retryAfter, options) => {
@@ -23,6 +24,6 @@ export function getOctokit(token: string): Octokit {
                 return true;
             },
         },
-        ...getOctokitOptions(token),
+        ...getOctokitOptions(token, options),
     });
 }

@@ -91546,7 +91546,7 @@ const core = __importStar(__nccwpck_require__(42186));
 const utils_1 = __nccwpck_require__(73030);
 const plugin_throttling_1 = __nccwpck_require__(9968);
 const ThrottlingOctokit = utils_1.GitHub.plugin(plugin_throttling_1.throttling);
-function getOctokit(token) {
+function getOctokit(token, options) {
     return new ThrottlingOctokit(Object.assign({ throttle: {
             onRateLimit: (retryAfter, options) => {
                 core.warning(`RateLimit detected for request ${options.method} ${options.url}.`);
@@ -91558,7 +91558,7 @@ function getOctokit(token) {
                 core.info(`Retrying after ${retryAfter} seconds.`);
                 return true;
             },
-        } }, (0, utils_1.getOctokitOptions)(token)));
+        } }, (0, utils_1.getOctokitOptions)(token, options)));
 }
 
 
@@ -91620,7 +91620,7 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // set up auth/environment
-            const token = process.env['GITHUB_TOKEN'] || core.getInput("token");
+            const token = core.getInput("token") || process.env['GITHUB_TOKEN'] || '';
             const config = core.getInput("config");
             const ajv = new _2020_1.default();
             const configJson = yaml.load(config);
@@ -91680,7 +91680,16 @@ function run() {
                     });
                 }
             }
-            const octokit = (0, github_1.getOctokit)(token);
+            const octokit = (0, github_1.getOctokit)(token, {
+                baseUrl: 'https://api.github.com',
+            });
+            octokit.hook.before("request", (options) => __awaiter(this, void 0, void 0, function* () {
+                console.log(`${options.method} ${options.baseUrl} ${options.url}`);
+                console.log(JSON.stringify(options));
+            }));
+            octokit.hook.error("request", (error, options) => __awaiter(this, void 0, void 0, function* () {
+                console.log(JSON.stringify(error));
+            }));
             for (let [repo, config] of configs) {
                 if (config.skip) {
                     core.info(`Skipping ${repo}`);
@@ -91726,6 +91735,7 @@ function defaultArchList() {
 }
 function downloadRelease(octokit, token, config, cache_enabled) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log(JSON.stringify(octokit));
         let dest = toolPath(config);
         let finalBinLocation = dest;
         if (config.binaries_location !== "") {
